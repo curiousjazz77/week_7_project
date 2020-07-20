@@ -3,7 +3,6 @@ from heapq import *
 import re
 import unicodedata
 import urllib.request
-import nltk.data
 
 
 class GutenbergAnalyzer:
@@ -29,7 +28,7 @@ class GutenbergAnalyzer:
             control_characters_removed.strip()
             .replace(".", "")
             .replace('"', "")
-            .replace('\'', "")
+            .replace("'", "")
             .replace(",", "")
             .replace("-", "")
             .replace("_", "")
@@ -53,7 +52,7 @@ class GutenbergAnalyzer:
     def check_if_viable_line(self, line):
         if "THE PREFACE" in line:
             self.viable_word_line = True
-            self.chapter_progression_words["PREFACE"] # add first
+            self.chapter_progression_words["PREFACE"]  # add first
         if "End of Project" in line:
             self.viable_word_line = False
         return
@@ -130,7 +129,7 @@ class GutenbergAnalyzer:
         self.interesting_word_mode = True
         return self.get20MostFrequentWords()
 
-    def getFrequencyOfWord(self, word): # per chapter
+    def getFrequencyOfWord(self, word):  # per chapter
         current_key = "PREFACE"
         for line in self.parse_file():
             self.check_if_viable_line(line)
@@ -147,13 +146,36 @@ class GutenbergAnalyzer:
         res = []
         for k, v in self.chapter_progression_words.items():
             if w in v:
-                res.append( [k, self.chapter_progression_words[k][w]])
+                res.append([k, self.chapter_progression_words[k][w]])
 
         return res
 
     def getChapterQuoteAppears(self, quote):
+        current_chapter = "PREFACE"
+        quote_arr = quote.split()
 
-
+        so_far = ""
+        multi_yield = self.parse_file()
+        while True:
+            try:
+                line = next(multi_yield)
+                self.check_if_viable_line(line)
+                if self.viable_word_line:
+                    line = self.remove_control_characters(line)
+                    if "CHAPTER" in line:
+                        current_chapter = line
+                    if quote_arr[0] in line:
+                        so_far += line
+                        next_line = next(multi_yield)
+                        so_far += " "
+                        so_far += next_line
+                        if quote in so_far:
+                            return current_chapter.split()[1]
+                        else:
+                            so_far = ""
+            except StopIteration:
+                break
+        return -1
 
 
 def main():
@@ -191,8 +213,8 @@ def main():
     print(*frequency_by_chapter, sep="\n")
     print("\n")
 
-
     quote = "Yes, Dorian, you will always be fond of me"
+    print("Quote: ", quote, "appears in chapter", g.getChapterQuoteAppears(quote))
 
 
 if __name__ == "__main__":
