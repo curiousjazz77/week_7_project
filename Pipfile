@@ -1,0 +1,4 @@
+[packages]
+black = "==19.10b0"
+nltk = "==3.5"
+pipfile = "*"
