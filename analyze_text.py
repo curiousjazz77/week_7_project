@@ -1,5 +1,6 @@
 from collections import Counter, defaultdict
 from heapq import *
+import random
 import re
 import unicodedata
 import urllib.request
@@ -33,6 +34,7 @@ class GutenbergAnalyzer:
             .replace("-", "")
             .replace("_", "")
             .replace("!", "")
+            .replace("?", "")
             .split()
         )
         sanitized_line = [x.lower() for x in sanitized_line]
@@ -146,8 +148,10 @@ class GutenbergAnalyzer:
         res = []
         for k, v in self.chapter_progression_words.items():
             if w in v:
-                res.append([k, self.chapter_progression_words[k][w]])
+                res.append(self.chapter_progression_words[k][w])
 
+        total_chapters = int(current_key.split()[1])
+        assert len(res) == total_chapters
         return res
 
     def getChapterQuoteAppears(self, quote):
@@ -177,6 +181,51 @@ class GutenbergAnalyzer:
                 break
         return -1
 
+    def find_next_word(self, start_word):
+        multi_yield = self.parse_file()
+        next_word_list = []
+        while True:
+            try:
+                line = next(multi_yield)
+                self.check_if_viable_line(line)
+                if self.viable_word_line:
+                    line = self.remove_control_characters(line)
+                    line = [x.lower() for x in line.split()]
+                    if not line:
+                        continue
+                    if start_word.lower() in line:
+                        for idx, word in enumerate(line):
+                            if word == start_word.lower() and idx + 1 < len(line):
+                                next_word_list.append(line[idx + 1])
+                    else:
+                        continue
+                else:
+                    continue
+
+            except StopIteration:
+                break
+        # PICK RANDOM ITEM
+        if len(next_word_list) > 0:
+            random_next_word = random.choice(next_word_list)
+            return random_next_word
+        else:
+            return ""
+
+    def generate_sentence(self, start_word):
+        res = [start_word]
+        next_word_list = []
+
+        k = 20
+        while k > 0:
+            next_word = self.find_next_word(res[-1])
+            if next_word == "":
+                continue
+            res.append(next_word)
+            k -= 1
+
+        res.append(".")
+        return " ".join(res)
+
 
 def main():
     url = "https://raw.githubusercontent.com/GITenberg/The-Picture-of-Dorian-Gray_174/master/174.txt"
@@ -203,18 +252,22 @@ def main():
 
     word = "dorian"
     frequency_by_chapter = g.getFrequencyOfWord(word)
-    print("Frequency of word: [", word, "] per chapter")
-    print(*frequency_by_chapter, sep="\n")
+    print("Frequency of word: [", word, "] per chapter", frequency_by_chapter)
     print("\n")
 
     word = "the"
     frequency_by_chapter = g.getFrequencyOfWord(word)
-    print("Frequency of word:[", word, "] per chapter")
-    print(*frequency_by_chapter, sep="\n")
+    print("Frequency of word:[", word, "] per chapter", frequency_by_chapter)
     print("\n")
 
     quote = "Yes, Dorian, you will always be fond of me"
     print("Quote: ", quote, "appears in chapter", g.getChapterQuoteAppears(quote))
+    print("\n")
+
+    """This takes quite some time; A trie built once would be faster"""
+    start_word = "The"
+    generated_sentence = g.generate_sentence(start_word)
+    print(generated_sentence)
 
 
 if __name__ == "__main__":
